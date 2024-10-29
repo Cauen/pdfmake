@@ -16049,7 +16049,7 @@ module.exports = LayoutBuilder;
 
 /***/ }),
 
-/***/ 21458:
+/***/ 19117:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
@@ -19365,13 +19365,6 @@ var EmbeddedFont = /*#__PURE__*/function (_PDFFont) {
       } else {
         descriptor.data.FontFile2 = fontFile;
       }
-      if (this.document.subset) {
-        var CIDSet = Buffer.from('FFFFFFFFC0', 'hex');
-        var CIDSetRef = this.document.ref();
-        CIDSetRef.write(CIDSet);
-        CIDSetRef.end();
-        descriptor.data.CIDSet = CIDSetRef;
-      }
       descriptor.end();
       var descendantFontData = {
         Type: 'Font',
@@ -21828,155 +21821,6 @@ var AttachmentsMixin = {
 function isEqual(a, b) {
   return a.Subtype === b.Subtype && a.Params.CheckSum.toString() === b.Params.CheckSum.toString() && a.Params.Size === b.Params.Size && a.Params.CreationDate === b.Params.CreationDate && a.Params.ModDate === b.Params.ModDate;
 }
-var PDFA = {
-  initPDFA: function initPDFA(pSubset) {
-    if (pSubset.charAt(pSubset.length - 3) === '-') {
-      this.subset_conformance = pSubset.charAt(pSubset.length - 1).toUpperCase();
-      this.subset = parseInt(pSubset.charAt(pSubset.length - 2));
-    } else {
-      // Default to Basic conformance when user doesn't specify
-      this.subset_conformance = 'B';
-      this.subset = parseInt(pSubset.charAt(pSubset.length - 1));
-    }
-  },
-  endSubset: function endSubset() {
-    this._addPdfaMetadata();
-    var jsPath = "".concat(__dirname, "/data/sRGB_IEC61966_2_1.icc");
-    var jestPath = "".concat(__dirname, "/../color_profiles/sRGB_IEC61966_2_1.icc");
-    this._addColorOutputIntent(fs.existsSync(jsPath) ? jsPath : jestPath);
-  },
-  _addColorOutputIntent: function _addColorOutputIntent(pICCPath) {
-    var iccProfile = fs.readFileSync(pICCPath);
-    var colorProfileRef = this.ref({
-      Length: iccProfile.length,
-      N: 3
-    });
-    colorProfileRef.write(iccProfile);
-    colorProfileRef.end();
-    var intentRef = this.ref({
-      Type: 'OutputIntent',
-      S: 'GTS_PDFA1',
-      Info: new String('sRGB IEC61966-2.1'),
-      OutputConditionIdentifier: new String('sRGB IEC61966-2.1'),
-      DestOutputProfile: colorProfileRef
-    });
-    intentRef.end();
-    this._root.data.OutputIntents = [intentRef];
-  },
-  _getPdfaid: function _getPdfaid() {
-    return "\n        <rdf:Description xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\" rdf:about=\"\">\n            <pdfaid:part>".concat(this.subset, "</pdfaid:part>\n            <pdfaid:conformance>").concat(this.subset_conformance, "</pdfaid:conformance>\n        </rdf:Description>\n        ");
-  },
-  _addPdfaMetadata: function _addPdfaMetadata() {
-    this.appendXML(this._getPdfaid());
-  }
-};
-var SubsetMixin = {
-  _importSubset: function _importSubset(subset) {
-    Object.assign(this, subset);
-  },
-  initSubset: function initSubset(options) {
-    switch (options.subset) {
-      case 'PDF/A-1':
-      case 'PDF/A-1a':
-      case 'PDF/A-1b':
-      case 'PDF/A-2':
-      case 'PDF/A-2a':
-      case 'PDF/A-2b':
-      case 'PDF/A-3':
-      case 'PDF/A-3a':
-      case 'PDF/A-3b':
-        this._importSubset(PDFA);
-        this.initPDFA(options.subset);
-        break;
-    }
-  }
-};
-var PDFMetadata = /*#__PURE__*/function () {
-  function PDFMetadata() {
-    _classCallCheck(this, PDFMetadata);
-    this._metadata = "\n        <?xpacket begin=\"\uFEFF\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>\n            <x:xmpmeta xmlns:x=\"adobe:ns:meta/\">\n                <rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">\n        ";
-  }
-  _createClass(PDFMetadata, [{
-    key: "_closeTags",
-    value: function _closeTags() {
-      this._metadata = this._metadata.concat("\n                </rdf:RDF>\n            </x:xmpmeta>\n        <?xpacket end=\"w\"?>\n        ");
-    }
-  }, {
-    key: "append",
-    value: function append(xml) {
-      var newline = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
-      this._metadata = this._metadata.concat(xml);
-      if (newline) this._metadata = this._metadata.concat('\n');
-    }
-  }, {
-    key: "getXML",
-    value: function getXML() {
-      return this._metadata;
-    }
-  }, {
-    key: "getLength",
-    value: function getLength() {
-      return this._metadata.length;
-    }
-  }, {
-    key: "end",
-    value: function end() {
-      this._closeTags();
-      this._metadata = this._metadata.trim();
-    }
-  }]);
-  return PDFMetadata;
-}();
-var MetadataMixin = {
-  initMetadata: function initMetadata() {
-    this.metadata = new PDFMetadata();
-  },
-  appendXML: function appendXML(xml) {
-    var newline = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
-    this.metadata.append(xml, newline);
-  },
-  _addInfo: function _addInfo() {
-    this.appendXML("\n        <rdf:Description rdf:about=\"\" xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">\n            <xmp:CreateDate>".concat(this.info.CreationDate.toISOString().split('.')[0] + "Z", "</xmp:CreateDate>\n            <xmp:CreatorTool>").concat(this.info.Creator, "</xmp:CreatorTool>\n        </rdf:Description>\n        "));
-    if (this.info.Title || this.info.Author || this.info.Subject) {
-      this.appendXML("\n            <rdf:Description rdf:about=\"\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n            ");
-      if (this.info.Title) {
-        this.appendXML("\n                <dc:title>\n                    <rdf:Alt>\n                        <rdf:li xml:lang=\"x-default\">".concat(this.info.Title, "</rdf:li>\n                    </rdf:Alt>\n                </dc:title>\n                "));
-      }
-      if (this.info.Author) {
-        this.appendXML("\n                <dc:creator>\n                    <rdf:Seq>\n                        <rdf:li>".concat(this.info.Author, "</rdf:li>\n                    </rdf:Seq>\n                </dc:creator>\n                "));
-      }
-      if (this.info.Subject) {
-        this.appendXML("\n                <dc:description>\n                    <rdf:Alt>\n                        <rdf:li xml:lang=\"x-default\">".concat(this.info.Subject, "</rdf:li>\n                    </rdf:Alt>\n                </dc:description>\n                "));
-      }
-      this.appendXML("\n            </rdf:Description>\n            ");
-    }
-    this.appendXML("\n        <rdf:Description rdf:about=\"\" xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\">\n            <pdf:Producer>".concat(this.info.Creator, "</pdf:Producer>"), false);
-    if (this.info.Keywords) {
-      this.appendXML("\n            <pdf:Keywords>".concat(this.info.Keywords, "</pdf:Keywords>"), false);
-    }
-    this.appendXML("\n        </rdf:Description>\n        ");
-  },
-  endMetadata: function endMetadata() {
-    this._addInfo();
-    this.metadata.end();
-    /*
-    Metadata was introduced in PDF 1.4, so adding it to 1.3 
-    will likely only take up more space.
-    */
-
-    if (this.version != 1.3) {
-      this.metadataRef = this.ref({
-        length: this.metadata.getLength(),
-        Type: 'Metadata',
-        Subtype: 'XML'
-      });
-      this.metadataRef.compress = false;
-      this.metadataRef.write(Buffer.from(this.metadata.getXML(), 'utf-8'));
-      this.metadataRef.end();
-      this._root.data.Metadata = this.metadataRef;
-    }
-  }
-};
 var PDFDocument = /*#__PURE__*/function (_stream$Readable) {
   _inherits(PDFDocument, _stream$Readable);
   var _super = _createSuper(PDFDocument);
@@ -22033,15 +21877,13 @@ var PDFDocument = /*#__PURE__*/function (_stream$Readable) {
 
     _this.page = null; // Initialize mixins
 
-    _this.initMetadata();
     _this.initColor();
     _this.initVector();
     _this.initFonts(options.font);
     _this.initText();
     _this.initImages();
     _this.initOutline();
-    _this.initMarkings(options);
-    _this.initSubset(options); // Initialize the metadata
+    _this.initMarkings(options); // Initialize the metadata
 
     _this.info = {
       Producer: 'PDFKit',
@@ -22254,10 +22096,6 @@ var PDFDocument = /*#__PURE__*/function (_stream$Readable) {
       }
       this.endOutline();
       this.endMarkings();
-      if (this.subset) {
-        this.endSubset();
-      }
-      this.endMetadata();
       this._root.end();
       this._root.data.Pages.end();
       this._root.data.Names.end();
@@ -22323,7 +22161,6 @@ var PDFDocument = /*#__PURE__*/function (_stream$Readable) {
 var mixin = function mixin(methods) {
   Object.assign(PDFDocument.prototype, methods);
 };
-mixin(MetadataMixin);
 mixin(ColorMixin);
 mixin(VectorMixin);
 mixin(FontsMixin);
@@ -22334,7 +22171,6 @@ mixin(OutlineMixin);
 mixin(MarkingsMixin);
 mixin(AcroFormMixin);
 mixin(AttachmentsMixin);
-mixin(SubsetMixin);
 PDFDocument.LineWrapper = LineWrapper;
 var _default = exports["default"] = PDFDocument;
 
@@ -55366,7 +55202,7 @@ module.exports = URLBrowserResolver;
 var isFunction = (__webpack_require__(91867).isFunction);
 var isUndefined = (__webpack_require__(91867).isUndefined);
 var isNull = (__webpack_require__(91867).isNull);
-var FileSaver = __webpack_require__(26835);
+var FileSaver = __webpack_require__(97071);
 var saveAs = FileSaver.saveAs;
 
 var defaultClientFonts = {
@@ -58263,7 +58099,7 @@ function _interopDefault(ex) {
 	return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex;
 }
 
-var PdfKit = _interopDefault(__webpack_require__(21458));
+var PdfKit = _interopDefault(__webpack_require__(19117));
 
 function getEngineInstance() {
 	return PdfKit;
@@ -58286,6 +58122,7 @@ module.exports = {
 /***/ (function(module, __unused_webpack_exports, __webpack_require__) {
 
 "use strict";
+/* provided dependency */ var Buffer = __webpack_require__(50621)["Buffer"];
 /*eslint no-unused-vars: ["error", {"args": "none"}]*/
 
 
@@ -58344,6 +58181,56 @@ var findFont = function (fonts, requiredFonts, defaultFont) {
 function PdfPrinter(fontDescriptors) {
 	this.fontDescriptors = fontDescriptors;
 }
+
+const appendDocMetadata = (doc) => {
+  const xmp = `
+  <?xpacket begin="\ufeff" id="W5M0MpCehiHzreSzNTczkc9d"?>
+  <x:xmpmeta xmlns:x="adobe:ns:meta/">
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <rdf:Description xmlns:pdfaid="http://www.aiim.org/pdfa/ns/id/" rdf:about="">
+              <pdfaid:part>3</pdfaid:part>
+              <pdfaid:conformance>B</pdfaid:conformance>
+          </rdf:Description>
+      </rdf:RDF>
+  </x:xmpmeta>
+  <?xpacket end="w"?>
+`;
+  const metadata = xmp.trim();
+  const refMetadata = doc.ref({
+    Length: metadata.length,
+    Type: 'Metadata',
+    Subtype: 'XML',
+  });
+  refMetadata.compress = false;
+  refMetadata.write(Buffer.from(metadata, 'utf-8'));
+  refMetadata.end();
+  doc._root.data.Metadata = refMetadata;
+};
+
+const appendColorProfiles = (doc) => {
+  const SRGB_IEC61966_ICC_PROFILE_B64 = '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';
+
+  // PDF/A standard requires embedded color profile.
+  const colorProfile = Buffer.from(SRGB_IEC61966_ICC_PROFILE_B64, 'base64');
+  const refColorProfile = doc.ref({
+    Length: colorProfile.length,
+    N: 3,
+  });
+  refColorProfile.write(colorProfile);
+  refColorProfile.end();
+
+  const refOutputIntent = doc.ref({
+    Type: 'OutputIntent',
+    S: 'GTS_PDFA1',
+    Info: new String('sRGB IEC61966-2.1'),
+    OutputConditionIdentifier: new String('sRGB IEC61966-2.1'),
+    DestOutputProfile: refColorProfile,
+  });
+  refOutputIntent.end();
+
+  // Add manually created objects to catalog.
+  doc._root.data.OutputIntents = [refOutputIntent];
+};
 
 /**
  * Executes layout engine for the specified document and renders it into a pdfkit document
@@ -58408,7 +58295,7 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 
 	var pdfOptions = {
 		size: [pageSize.width, pageSize.height],
-		pdfVersion: docDefinition.version,
+		pdfVersion: docDefinition.version || '1.7',
 		compress: docDefinition.compress,
 		userPassword: docDefinition.userPassword,
 		ownerPassword: docDefinition.ownerPassword,
@@ -58418,7 +58305,8 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 		bufferPages: options.bufferPages || false,
 		autoFirstPage: false,
 		info: createMetadata(docDefinition),
-		font: null
+		font: null,
+    tagged: true
 	};
 
 	this.pdfKitDoc = PdfKitEngine.createPdfDocument(pdfOptions);
@@ -58451,6 +58339,9 @@ PdfPrinter.prototype.createPdfKitDocument = function (docDefinition, options) {
 	var patterns = createPatterns(docDefinition.patterns || {}, this.pdfKitDoc);
 
 	renderPages(pages, this.fontProvider, this.pdfKitDoc, patterns, options.progressCallback);
+
+  appendDocMetadata(this.pdfKitDoc);
+  appendColorProfiles(this.pdfKitDoc);
 
 	if (options.autoPrint) {
 		var printActionRef = this.pdfKitDoc.ref({
@@ -61299,7 +61190,7 @@ module.exports = TraversalTracker;
 
 /***/ }),
 
-/***/ 26835:
+/***/ 97071:
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;(function(a,b){if(true)!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (b),
